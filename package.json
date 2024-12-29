@@ -1,0 +1,12 @@
+{
+  "name": "electron-exploration",
+  "version": "1.0.0",
+  "description": "A simple Hello World Electron app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^25.0.0"
+  }
+}
