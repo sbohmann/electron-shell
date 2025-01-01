@@ -1,24 +1,34 @@
+import {initializeClock} from "./clock.js"
+
 window.onload = () => {
-    let button = document.createElement("button")
-    button.textContent = "Again"
-    document.body.appendChild(button)
-    button.onclick = () => {
-        alert("Hi again!")
-    }
+    void startQuestionLoop()
 
-    ask()
+    const RECURSION_PROBABILITY_THRESHOLD = 0.9
 
-    function ask() {
-        question('Hi!', value => {
+    async function startQuestionLoop() {
+        try {
+            const value = await question('Hi!')
             output(`[${value}]`)
-            if (Math.random() < 0.9) {
-                ask()
+            if (Math.random() < RECURSION_PROBABILITY_THRESHOLD) {
+                void startQuestionLoop()
             }
-        })
+        } catch (error) {
+            output('An internal error has occurred. Please try again later.')
+            output(`Detailed error: ${error.message}`)
+            output(`Stack trace: ${error.stack}`)
+        }
     }
+
+    initializeClock()
 }
 
-function question(promptText, handleResult) {
+function question(promptText) {
+    return new Promise((resolve) => {
+        resolveQuestion(promptText, resolve)
+    })
+}
+
+function resolveQuestion(promptText, resolve) {
     let prompt = document.createElement('p')
     prompt.textContent = promptText
     document.body.appendChild(prompt)
@@ -27,8 +37,9 @@ function question(promptText, handleResult) {
     document.body.appendChild(input)
     input.onkeydown = event => {
         if (event.key === "Enter") {
-            handleResult(input.value.trim())
+            resolve(input.value.trim())
             input.disabled = true
+            input.onkeydown = null
         }
     }
     input.focus()
