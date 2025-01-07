@@ -1,8 +1,7 @@
-
-const SMOOTH_MODE_ENABLED = false
+const SMOOTH_MODE_ENABLED = true
 const CANVAS_WIDTH = 150
 const CANVAS_HEIGHT = 150
-const CLOCK_POSITION = { right: '10px', top: '10px' }
+const CLOCK_POSITION = {right: '10px', top: '10px'}
 
 export function initializeClock() {
     const clockCanvas = document.createElement('canvas')
@@ -12,6 +11,14 @@ export function initializeClock() {
     clockCanvas.width = CANVAS_WIDTH
     clockCanvas.height = CANVAS_HEIGHT
     clockCanvas.style.position = 'fixed'
+    const container = document.createElement('div')
+    container.setAttribute('aria-live', 'polite')
+    container.setAttribute('aria-label', 'Current time: ')
+    container.style.position = 'fixed'
+    container.style.right = CLOCK_POSITION.right
+    container.style.top = CLOCK_POSITION.top
+    container.appendChild(clockCanvas)
+    document.body.appendChild(container)
     clockCanvas.style.right = CLOCK_POSITION.right
     clockCanvas.style.top = CLOCK_POSITION.top
     document.body.appendChild(clockCanvas)
@@ -31,6 +38,7 @@ export function initializeClock() {
         const seconds = time.getSeconds()
         const milliseconds = time.getMilliseconds()
 
+        ctx.save()
         ctx.translate(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2)
         ctx.rotate(-Math.PI / 2)
         ctx.lineCap = 'round'
@@ -42,9 +50,11 @@ export function initializeClock() {
         drawHand(ctx, (Math.PI * 2) * (minutes / 60) + (Math.PI * 2) * (seconds / 3600), 45, 5, '#000')
 
         // Draw second hand
-        drawHand(ctx, (Math.PI * 2) * (seconds / 60) + (Math.PI * 2) * (milliseconds / 60000), 50, 2, 'red')
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            drawHand(ctx, (Math.PI * 2) * (seconds / 60) + (Math.PI * 2) * (milliseconds / 60000), 50, 2, '#D32F2F')
+        }
 
-        ctx.resetTransform()
+        ctx.restore()
     }
 
     function drawHand(ctx, rotation, length, width, color) {
@@ -58,17 +68,24 @@ export function initializeClock() {
         ctx.rotate(-rotation)
     }
 
-    function renderStaticClock(ctx) {
+    function renderStaticClock(ctx, width = CANVAS_WIDTH, height = CANVAS_HEIGHT) {
+        ctx.clearRect(0, 0, width, height)
+        drawClockBorder(ctx, width / 2, height / 2)
+        drawClockTicks(ctx, width / 2, height / 2, width)
         ctx.clearRect(0, 0, 150, 150)
         drawClockBorder(ctx)
         drawClockTicks(ctx)
     }
+
     // Draw clock border
-    function drawClockBorder(ctx) {
+    function drawClockBorder(ctx, centerX, centerY) {
         ctx.beginPath()
-        ctx.arc(75, 75, 74, 0, Math.PI * 2) // 74 radius to account for border stroke
+        ctx.arc(centerX, centerY, centerX - 1, 0, Math.PI * 2)
         ctx.lineWidth = 4
-        ctx.strokeStyle = '#000'
+        ctx.strokeStyle = '#000000'
+        ctx.stroke()
+
+        ctx.strokeStyle = '#000000'
         ctx.stroke()
     }
 
@@ -80,14 +97,14 @@ export function initializeClock() {
             ctx.rotate(angle)
             if (i % 5 === 0) {
                 ctx.lineWidth = 4
-                ctx.strokeStyle = '#000'
+                ctx.strokeStyle = '#000000'
                 ctx.beginPath()
                 ctx.moveTo(65, 0)
                 ctx.lineTo(74, 0)
                 ctx.stroke()
             } else {
                 ctx.lineWidth = 2
-                ctx.strokeStyle = '#777'
+                ctx.strokeStyle = '#555555'
                 ctx.beginPath()
                 ctx.moveTo(70, 0)
                 ctx.lineTo(74, 0)
@@ -103,14 +120,14 @@ export function initializeClock() {
     function syncAndStartClock() {
         function recursiveClockUpdate() {
             updateClock(ctx)
-            if (SMOOTH_MODE_ENABLED) {
+            if (SMOOTH_MODE_ENABLED && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 window.requestAnimationFrame(recursiveClockUpdate)
-            } else {
+            } else if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 setTimeout(recursiveClockUpdate, timeUntilNextClockTick())
             }
         }
 
-        if (SMOOTH_MODE_ENABLED) {
+        if (SMOOTH_MODE_ENABLED && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             window.requestAnimationFrame(() => recursiveClockUpdate())
         } else {
             setTimeout(() => {
@@ -121,14 +138,25 @@ export function initializeClock() {
     }
 
     syncAndStartClock()
-}
+    window.addEventListener('resize', updateCanvasSize)
+    updateCanvasSize()
 
-function timeUntilNextClockTick() {
-    const now = new Date()
-    let offsetPoint = now.getMilliseconds() + 50
-    let result = 1050 - offsetPoint
-    if (result < 0) {
-        result += 1000
+    function updateCanvasSize() {
+        const size = Math.min(window.innerWidth, window.innerHeight, 300)
+        staticCanvas.width = size
+        staticCanvas.height = size
+        clockCanvas.width = size
+        clockCanvas.height = size
+        renderStaticClock(staticCanvas.getContext('2d'), size, size)
     }
-    return result
+
+    function timeUntilNextClockTick() {
+        const now = new Date()
+        let offsetPoint = now.getMilliseconds() + 50
+        let result = 1050 - offsetPoint
+        if (result < 0) {
+            result += 1000
+        }
+        return result
+    }
 }
